@@ -3,37 +3,72 @@ import Car from "../models/car.js";
 export const getCars = async (req, res, next) => {
   try {
     const {
-      make,
-      model,
-      minPrice,
-      maxPrice,
-      minYear,
-      maxYear,
-      page = 1,
-      limit = 10,
+      search, 
+      minPrice, maxPrice, minYear, maxYear, minMileage, maxMileage,
+      sortBy = 'createdAt', 
+      page = 1, limit = 10
     } = req.query;
-    const query = {};
 
-    if (make) query.make = { $regex: make, $options: "i" };
-    if (model) query.model = { $regex: model, $options: "i" };
-    if (minPrice) query.price = { ...query.price, $gte: Number(minPrice) };
-    if (maxPrice) query.price = { ...query.price, $lte: Number(maxPrice) };
-    if (minYear) query.year = { ...query.year, $gte: Number(minYear) };
-    if (maxYear) query.year = { ...query.year, $lte: Number(maxYear) };
+    const match = {};
+    if (search) {
+      match.$text = { $search: search }; 
+    }
+    if (minPrice) match.price = { ...match.price, $gte: Number(minPrice) };
+    if (maxPrice) match.price = { ...match.price, $lte: Number(maxPrice) };
+    if (minYear) match.year = { ...match.year, $gte: Number(minYear) };
+    if (maxYear) match.year = { ...match.year, $lte: Number(maxYear) };
+    if (minMileage) match.mileage = { ...match.mileage, $gte: Number(minMileage) };
+    if (maxMileage) match.mileage = { ...match.mileage, $lte: Number(maxMileage) };
 
-    const cars = await Car.find(query)
-      .populate("seller", "name email")
-      .skip((page - 1) * limit)
-      .limit(Number(limit));
-    const total = await Car.countDocuments(query);
+    const sort = {};
+    if (sortBy) {
+      const [field, dir = 'asc'] = sortBy.split(':'); 
+      sort[field] = dir === 'desc' ? -1 : 1;
+    } else {
+      sort.createdAt = -1; 
+    }
+
+    
+    const aggregate = [
+      { $match: match },
+      { $sort: sort },
+      { $skip: (page - 1) * limit },
+      { $limit: Number(limit) },
+      { $lookup: { from: 'users', localField: 'seller', foreignField: '_id', as: 'seller' } },
+      { $unwind: '$seller' },
+      { $project: { 'seller.password': 0 } } 
+    ];
+
+    const cars = await Car.aggregate(aggregate);
+
+    
+    const statsAggregate = [
+      { $match: match },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: 1 },
+          avgPrice: { $avg: '$price' },
+          minPrice: { $min: '$price' },
+          maxPrice: { $max: '$price' }
+        }
+      }
+    ];
+    const [stats] = await Car.aggregate(statsAggregate);
+
     res.json({
       cars,
-      total,
+      total: stats?.total || 0,
       page: Number(page),
-      pages: Math.ceil(total / limit),
+      pages: Math.ceil((stats?.total || 0) / limit),
+      stats: {
+        avgPrice: stats?.avgPrice || 0,
+        minPrice: stats?.minPrice || 0,
+        maxPrice: stats?.maxPrice || 0
+      }
     });
-  } catch (error) {
-    next(error);
+  } catch (err) {
+    next(err);
   }
 };
 

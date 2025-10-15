@@ -12,5 +12,8 @@ const carSchema = new mongoose.Schema({
     location: {type: String}
 },{timestamps:true});
 
+carSchema.index({ make: 'text', model: 'text', location: 'text' });
+carSchema.index({ price: 1, year: 1, mileage: 1 });
+
 const Car = mongoose.models.Car || mongoose.model('Car',carSchema);
 export default Car;
