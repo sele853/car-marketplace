@@ -4,8 +4,10 @@ import cors from "cors";
 import connectDB from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import carRoutes from "./routes/carRoutes.js";
+import chatRoutes from "./routes/chatRoutes.js";
 import errorHandler from "./middleware/errorMiddleware.js";
-
+import setupSocket from "./socket/socket.js";
+import http from 'http';
 
 dotenv.config();
 connectDB();
@@ -17,8 +19,12 @@ app.use('/uploads',express.static('uploads'));
 
 app.use('/api/auth',authRoutes);
 app.use('/api/cars',carRoutes);
+app.use('/api/chat',chatRoutes);
 
 app.use(errorHandler);
+
+const server = http.createServer(app);
+setupSocket(server);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT , () => console.log(`Server running on port ${PORT}`));
