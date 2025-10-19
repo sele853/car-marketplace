@@ -8,6 +8,7 @@ import chatRoutes from "./routes/chatRoutes.js";
 import errorHandler from "./middleware/errorMiddleware.js";
 import setupSocket from "./socket/socket.js";
 import http from 'http';
+import chapaRoutes from './routes/chapaRoutes.js';
 
 dotenv.config();
 connectDB();
@@ -20,6 +21,7 @@ app.use('/uploads',express.static('uploads'));
 app.use('/api/auth',authRoutes);
 app.use('/api/cars',carRoutes);
 app.use('/api/chat',chatRoutes);
+app.use('/api/chapa', chapaRoutes);
 
 app.use(errorHandler);
 
