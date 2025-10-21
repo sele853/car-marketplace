@@ -9,6 +9,7 @@ import errorHandler from "./middleware/errorMiddleware.js";
 import setupSocket from "./socket/socket.js";
 import http from 'http';
 import chapaRoutes from './routes/chapaRoutes.js';
+import recommendationRoutes from "./routes/recommendationRoutes.js";
 
 dotenv.config();
 connectDB();
@@ -22,6 +23,7 @@ app.use('/api/auth',authRoutes);
 app.use('/api/cars',carRoutes);
 app.use('/api/chat',chatRoutes);
 app.use('/api/chapa', chapaRoutes);
+app.use('/api/recommendations',recommendationRoutes);
 
 app.use(errorHandler);
 
