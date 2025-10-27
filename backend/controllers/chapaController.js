@@ -8,7 +8,6 @@ const CHAPA_BASE_URL = process.env.CHAPA_BASE_URL || 'https://api.chapa.co/v1';
 export const createChapaPayment = async (req, res, next) => {
   try {
     const { carId, amount, phone } = req.body;
-
     if (!carId || !mongoose.Types.ObjectId.isValid(carId)) {
       return res.status(400).json({ message: 'Valid car ID is required' });
     }
@@ -21,20 +20,20 @@ export const createChapaPayment = async (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({ message: 'User not authenticated' });
     }
-
+    console.log('User data:', { id: req.user.id, email: req.user.email, name: req.user.name, role: req.user.role });
     const car = await Car.findById(carId).populate('seller');
     if (!car) {
       return res.status(404).json({ message: 'Car not found' });
     }
-
+    if (car.status !== 'approved') {
+      return res.status(400).json({ message: 'Car is not approved for purchase' });
+    }
     if (Math.abs(amount - car.price) > 100) {
       console.warn(`Payment amount ${amount} ETB doesn't match car price ${car.price} ETB`);
     }
-
     const shortUserId = req.user.id.slice(-8);
     const shortRandom = Math.random().toString(36).substr(2, 6);
     const transactionRef = `CAR_${shortUserId}_${Date.now()}_${shortRandom}`.slice(0, 50);
-
     const payment = new Payment({
       user: req.user.id,
       car: carId,
@@ -48,14 +47,12 @@ export const createChapaPayment = async (req, res, next) => {
       }
     });
     await payment.save();
-
     const name = req.user.name || 'Test User';
     const firstName = name.split(' ')[0] || 'Test';
     const lastName = name.split(' ').slice(1).join(' ') || 'User';
     const userEmail = req.user.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(req.user.email)
       ? req.user.email
-      : `test${Date.now()}@mailinator.com`; 
-
+      : `test${Date.now()}@mailinator.com`;
     const chapaPayload = {
       amount,
       currency: 'ETB',
@@ -68,8 +65,7 @@ export const createChapaPayment = async (req, res, next) => {
       return_url: `${process.env.APP_BASE_URL || process.env.FRONTEND_URL}/cars/${carId}`,
       description: `Payment for ${car.make} ${car.model} (ID: ${carId})`
     };
-
-    // Initialize Chapa transaction
+    console.log('Chapa request payload:', chapaPayload);
     let chapaResponse;
     try {
       chapaResponse = await axios.post(
@@ -79,18 +75,25 @@ export const createChapaPayment = async (req, res, next) => {
           headers: {
             Authorization: `Bearer ${process.env.CHAPA_SECRET_KEY}`,
             'Content-Type': 'application/json'
-          }
+          },
+          timeout: 10000
         }
       );
     } catch (axiosError) {
       console.error('Chapa API error:', {
         status: axiosError.response?.status,
         data: axiosError.response?.data,
-        message: axiosError.message
+        message: axiosError.message,
+        code: axiosError.code
       });
+      if (axiosError.code === 'ENOTFOUND') {
+        return res.status(503).json({
+          message: 'Failed to connect to Chapa API',
+          error: 'DNS resolution failed for api.chapa.co. Check network or try again later.'
+        });
+      }
       throw axiosError;
     }
-
     if (chapaResponse.data.status !== 'success') {
       payment.status = 'failed';
       await payment.save();
@@ -99,13 +102,9 @@ export const createChapaPayment = async (req, res, next) => {
         error: chapaResponse.data.message || 'Unknown error'
       });
     }
-
-    // Store checkout URL
     payment.metadata.checkoutUrl = chapaResponse.data.data.checkout_url;
     await payment.save();
-
     console.log(`Chapa payment initialized: ${transactionRef} for ${amount} ETB`);
-
     res.status(201).json({
       checkoutUrl: chapaResponse.data.data.checkout_url,
       transactionRef,

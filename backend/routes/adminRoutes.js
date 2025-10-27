@@ -1,6 +1,6 @@
 import express from 'express';
 import { protect } from '../middleware/authMiddleware.js';
-import { adminOnly } from '../middleware/adminMiddleware.js';
+import { adminOnly } from '../middleware/roleMiddleware.js';
 import {
   getUsers,
   toggleUserBlock,
