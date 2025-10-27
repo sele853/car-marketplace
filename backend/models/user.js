@@ -17,6 +17,7 @@ const userSchema = new mongoose.Schema(
       maxMileage: { type: Number, default: 100000 },
     },
     favorites: [{ type: mongoose.Schema.Types.ObjectId, ref: "Car" }],
+    isBlocked: { type: Boolean, default: false }
   },
   { timestamps: true }
 );

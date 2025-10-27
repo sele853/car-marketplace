@@ -1,7 +1,7 @@
 import axios from 'axios';
 import mongoose from 'mongoose';
-import Payment from '../models/Payment.js';
-import Car from '../models/Car.js';
+import Payment from '../models/payment.js';
+import Car from '../models/car.js';
 
 const CHAPA_BASE_URL = process.env.CHAPA_BASE_URL || 'https://api.chapa.co/v1';
 

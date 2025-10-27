@@ -9,7 +9,8 @@ const carSchema = new mongoose.Schema({
     description: {type:String},
     images: [{type:String}],
     seller: { type: mongoose.Schema.Types.ObjectId , ref: 'User' , required:true},
-    location: {type: String}
+    location: {type: String},
+    status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' }
 },{timestamps:true});
 
 carSchema.index({ make: 'text', model: 'text', location: 'text' });
