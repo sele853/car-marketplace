@@ -1,34 +1,77 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+// src/App.jsx
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { AuthProvider, useAuth } from './context/AuthContext'
+import Layout from './components/layout/Layout'
+import Home from './pages/Home'
+import Login from './pages/Login'
+import Register from './pages/Register'
+import Cars from './pages/Cars'
+import CarDetail from './pages/CarDetail'
+import SellCar from './pages/SellCar'
+import AdminDashboard from './pages/AdminDashboard'
+import SellerListings from './pages/SellerListing'
+import BuyerOrders from './pages/BuyerOrder'
+
+function ProtectedRoute({ children, adminOnly }) {
+  const { isAuthenticated, user } = useAuth()
+
+  if (!isAuthenticated()) return <Navigate to="/login" replace />
+
+  if (adminOnly && user?.role !== 'admin') return <Navigate to="/" replace />
+
+  return children
+}
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route element={<Layout />}>
+            <Route path="/" element={<Home />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/cars" element={<Cars />} />
+            <Route path="/cars/:id" element={<CarDetail />} />
+
+            <Route
+              path="/my-listings"
+              element={
+                <ProtectedRoute>
+                  <SellerListings />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/sell"
+              element={
+                <ProtectedRoute>
+                  <SellCar />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/my-orders"
+              element={
+                <ProtectedRoute>
+                  <BuyerOrders />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute adminOnly>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              }
+            />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   )
 }
 
